@@ -1,39 +1,54 @@
-name: Deploy Flask App to ECS Fargate
+name: Deploy to ECS
 
 on:
   push:
     branches:
-      - main  # Deploy only on main branch
+      - main  # or your deployment branch
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: myapp/dev
+  CLUSTER_NAME: My-app-Prod
+  SERVICE_NAME: My-app-service
+  ACCOUNT_ID: 269172689648
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Change to your AWS region
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+    - name: Login to Amazon ECR
+      run: |
+        aws ecr get-login-password --region $AWS_REGION \
+        | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      - name: Build & Push Docker Image
-        run: |
-          IMAGE_TAG=${GITHUB_SHA::8}
-          docker build -t ${{ secrets.ECR_REPO }}:$IMAGE_TAG .
-          docker push ${{ secrets.ECR_REPO }}:$IMAGE_TAG
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+    - name: Build Docker image
+      run: |
+        IMAGE_TAG=${GITHUB_SHA::8}  # Short commit SHA
+        docker build -t $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG \
+                   $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
-      - name: Deploy to ECS
-        run: |
-          aws ecs update-service \
-            --cluster My-app-Prod \
-            --service My-app-service \
-            --force-new-deployment
+    - name: Push Docker image
+      run: |
+        IMAGE_TAG=${GITHUB_SHA::8}
+        docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+
+    - name: Update ECS service
+      run: |
+        aws ecs update-service \
+          --cluster $CLUSTER_NAME \
+          --service $SERVICE_NAME \
+          --force-new-deployment
 
