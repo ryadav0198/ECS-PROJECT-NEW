@@ -34,7 +34,8 @@ jobs:
 
     - name: Build Docker image
       run: |
-        IMAGE_TAG=${GITHUB_SHA::8}  # Short commit SHA
+        #IMAGE_TAG=${GITHUB_SHA::8}  # Short commit SHA
+        IMAGE_TAG=latest
         docker build -t $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG .
         docker tag $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG \
                    $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
@@ -42,7 +43,7 @@ jobs:
     - name: Push Docker image
       run: |
         IMAGE_TAG=${GITHUB_SHA::8}
-        docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+        #docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
 
     - name: Update ECS service
