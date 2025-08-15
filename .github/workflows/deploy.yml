@@ -33,7 +33,7 @@ jobs:
       - name: Deploy to ECS
         run: |
           aws ecs update-service \
-            --cluster my-cluster \
-            --service my-service \
+            --cluster My-app-Prod \
+            --service My-app-service \
             --force-new-deployment
 
