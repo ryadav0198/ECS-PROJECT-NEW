@@ -1,0 +1,39 @@
+name: Deploy Flask App to ECS Fargate
+
+on:
+  push:
+    branches:
+      - main  # Deploy only on main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Change to your AWS region
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Docker Image
+        run: |
+          IMAGE_TAG=${GITHUB_SHA::8}
+          docker build -t ${{ secrets.ECR_REPO }}:$IMAGE_TAG .
+          docker push ${{ secrets.ECR_REPO }}:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster My-app-Prod \
+            --service My-app-service \
+            --force-new-deployment
+
